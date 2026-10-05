@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>DBND Racer - Hill Racing</title>
+
+<style>
+
+*{
+    box-sizing:border-box;
+    user-select:none;
+}
+
+html,body{
+    margin:0;
+    padding:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#73cef2;
+    font-family:Arial,sans-serif;
+}
+
+canvas{
+    display:block;
+    width:100%;
+    height:100%;
+}
+
+/* ================= HUD ================= */
+
+#hud{
+    position:fixed;
+    top:8px;
+    left:8px;
+    right:8px;
+
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+
+    z-index:20;
+    pointer-events:none;
+}
+
+.box{
+    background:rgba(10,25,35,.88);
+    color:white;
+
+    border:2px solid white;
+    border-radius:14px;
+
+    padding:8px 12px;
+
+    font-size:14px;
+    font-weight:bold;
+
+    min-width:150px;
+}
+
+#fuelBar{
+    width:120px;
+    height:12px;
+
+    background:#222;
+
+    border:2px solid white;
+    border-radius:10px;
+
+    overflow:hidden;
+
+    margin-top:3px;
+}
+
+#fuel{
+    width:100%;
+    height:100%;
+
+    background:#21e66b;
+}
+
+/* ================= LEVEL ================= */
+
+#levelName{
+
+    position:fixed;
+
+    top:8px;
+    left:50%;
+
+    transform:translateX(-50%);
+
+    z-index:21;
+
+    background:rgba(0,0,0,.75);
+
+    color:white;
+
+    border:2px solid white;
+    border-radius:20px;
+
+    padding:7px 18px;
+
+    font-size:16px;
+    font-weight:bold;
+
+    pointer-events:none;
+}
+
+/* ================= CONTROLS ================= */
+
+#controls{
+
+    position:fixed;
+
+    bottom:15px;
+    left:0;
+    right:0;
+
+    display:flex;
+    justify-content:space-between;
+
+    padding:0 18px;
+
+    z-index:30;
+
+    pointer-events:none;
+}
+
+.controlGroup{
+
+    display:flex;
+    gap:12px;
+}
+
+button.control{
+
+    width:68px;
+    height:68px;
+
+    border-radius:50%;
+
+    border:4px solid white;
+
+    background:rgba(12,55,70,.85);
+
+    color:white;
+
+    font-size:27px;
+    font-weight:bold;
+
+    touch-action:none;
+
+    pointer-events:auto;
+}
+
+button.control:active{
+    transform:scale(.92);
+    background:#1d718c;
+}
+
+/* ================= MENU ================= */
+
+#menu{
+
+    position:fixed;
+
+    left:50%;
+    top:50%;
+
+    transform:translate(-50%,-50%);
+
+    width:min(90%,420px);
+
+    background:rgba(10,25,35,.96);
+
+    color:white;
+
+    border:4px solid white;
+    border-radius:22px;
+
+    padding:25px;
+
+    text-align:center;
+
+    z-index:100;
+}
+
+#menu h1{
+    margin:0 0 8px;
+    font-size:30px;
+}
+
+#menu p{
+    margin:7px 0;
+}
+
+.menuButton{
+
+    width:100%;
+
+    margin-top:12px;
+
+    padding:13px;
+
+    border-radius:12px;
+
+    border:2px solid white;
+
+    background:#1685a8;
+
+    color:white;
+
+    font-size:18px;
+    font-weight:bold;
+}
+
+.menuButton:active{
+    transform:scale(.97);
+}
+
+#levelButtons{
+
+    display:grid;
+
+    grid-template-columns:repeat(3,1fr);
+
+    gap:8px;
+
+    margin-top:15px;
+}
+
+.levelButton{
+
+    padding:10px;
+
+    border-radius:10px;
+
+    border:2px solid white;
+
+    background:#294650;
+
+    color:white;
+
+    font-weight:bold;
+}
+
+.levelButton.unlocked{
+    background:#1685a8;
+}
+
+/* ================= GAME OVER ================= */
+
+#resultScreen{
+
+    display:none;
+
+    position:fixed;
+
+    left:50%;
+    top:50%;
+
+    transform:translate(-50%,-50%);
+
+    width:min(90%,400px);
+
+    background:rgba(8,22,30,.97);
+
+    color:white;
+
+    border:4px solid white;
+
+    border-radius:22px;
+
+    padding:25px;
+
+    text-align:center;
+
+    z-index:90;
+}
+
+#resultTitle{
+    font-size:30px;
+    margin-bottom:10px;
+}
+
+.resultButton{
+
+    width:100%;
+
+    margin-top:10px;
+
+    padding:13px;
+
+    border-radius:12px;
+
+    border:2px solid white;
+
+    background:#1685a8;
+
+    color:white;
+
+    font-size:17px;
+    font-weight:bold;
+}
+
+.hidden{
+    display:none !important;
+}
+
+</style>
+</head>
+
+<body>
+
+<canvas id="game"></canvas>
+
+<!-- ================= HUD ================= -->
+
+<div id="hud">
+
+    <div class="box">
+
+        🏁 Position:
+        <span id="position">2</span>/2
+
+        <br>
+
+        📏 Distance:
+        <span id="distance">0</span> m
+
+        <br>
+
+        🚗 Speed:
+        <span id="speed">0</span>
+
+    </div>
+
+
+    <div class="box">
+
+        🪙 Coins:
+        <span id="coins">0</span>
+
+        <br>
+
+        ⛽ Fuel
+
+        <div id="fuelBar">
+            <div id="fuel"></div>
+        </div>
+
+        🏪 Shops:
+        <span id="shops">0</span>
+
+    </div>
+
+</div>
+
+<div id="levelName">
+    LEVEL 1 - GREEN HILLS
+</div>
+
+
+<!-- ================= CONTROLS ================= -->
+
+<div id="controls">
+
+    <div class="controlGroup">
+
+        <button class="control" id="left">
+            ◀
+        </button>
+
+        <button class="control" id="right">
+            ▶
+        </button>
+
+    </div>
+
+
+    <div class="controlGroup">
+
+        <button class="control" id="brake">
+            ▼
+        </button>
+
+        <button class="control" id="gas">
+            ▲
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- ================= START MENU ================= -->
+
+<div id="menu">
+
+    <h1>🏎️ DBND RACER</h1>
+
+    <p>Hill Racing Championship</p>
+
+    <p>🤖 Race against BOT</p>
+
+    <p>🪙 Collect coins • ⛽ Fuel • 🏪 Shops</p>
+
+    <button class="menuButton" id="startGame">
+        ▶ START RACE
+    </button>
+
+    <p>Choose Level</p>
+
+    <div id="levelButtons"></div>
+
+</div>
+
+
+<!-- ================= RESULT ================= -->
+
+<div id="resultScreen">
+
+    <div id="resultTitle">
+        🏆 YOU WIN!
+    </div>
+
+    <div id="resultInfo"></div>
+
+    <button class="resultButton" id="nextLevel">
+        ➡️ NEXT LEVEL
+    </button>
+
+    <button class="resultButton" id="retryLevel">
+        🔄 RETRY
+    </button>
+
+    <button class="resultButton" id="menuButton">
+        🏠 LEVEL MENU
+    </button>
+
+</div>
+
+
+<script>
+
+/* =====================================================
+   CANVAS
+===================================================== */
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let W = 0;
+let H = 0;
+
+function resize(){
+
+    W = window.innerWidth;
+    H = window.innerHeight;
+
+    canvas.width = W;
+    canvas.height = H;
+
+}
+
+window.addEventListener("resize",resize);
+
+resize();
+
+
+/* =====================================================
+   LEVELS
+===================================================== */
+
+const levels = [
+
+    {
+        name:"GREEN HILLS",
+        sky:"#72cef2",
+        ground:"#75a943",
+        road:"#a36b3d",
+        mountain:"#64905a",
+
+        length:5000,
+
+        wave1:.006,
+        wave2:.013,
+        wave3:.002,
+
+        amp1:55,
+        amp2:22,
+        amp3:30,
+
+        speed:2.7
+    },
+
+    {
+        name:"DESERT RUN",
+        sky:"#f2bd72",
+        ground:"#d69b43",
+        road:"#8a5634",
+        mountain:"#b9783e",
+
+        length:5500,
+
+        wave1:.004,
+        wave2:.011,
+        wave3:.0015,
+
+        amp1:70,
+        amp2:28,
+        amp3:35,
+
+        speed:3
+    },
+
+    {
+        name:"SNOW MOUNTAIN",
+        sky:"#bde8ff",
+        ground:"#e8f1f4",
+        road:"#777b82",
+        mountain:"#91a7b2",
+
+        length:6000,
+
+        wave1:.005,
+        wave2:.016,
+        wave3:.002,
+
+        amp1:65,
+        amp2:25,
+        amp3:40,
+
+        speed:3.2
+    },
+
+    {
+        name:"NIGHT CITY",
+        sky:"#18254c",
+        ground:"#243c35",
+        road:"#50535a",
+        mountain:"#192a31",
+
+        length:6500,
+
+        wave1:.006,
+        wave2:.018,
+        wave3:.002,
+
+        amp1:60,
+        amp2:30,
+        amp3:45,
+
+        speed:3.5
+    },
+
+    {
+        name:"VOLCANO EXTREME",
+        sky:"#321b25",
+        ground:"#513527",
+        road:"#693c2c",
+        mountain:"#321f1f",
+
+        length:7000,
+
+        wave1:.007,
+        wave2:.021,
+        wave3:.002,
+
+        amp1:85,
+        amp2:35,
+        amp3:50,
+
+        speed:3.8
+    }
+
+];
+
+
+/* =====================================================
+   GAME STATE
+===================================================== */
+
+let currentLevel = 0;
+
+let level;
+
+let camera = 0;
+
+let gameRunning = false;
+
+let gameEnded = false;
+
+let fuel = 100;
+
+let coinCount = 0;
+
+let shopCount = 0;
+
+let finishX = 5000;
+
+
+/* =====================================================
+   CONTROLS
+===================================================== */
+
+const controls = {
+
+    left:false,
+    right:false,
+    gas:false,
+    brake:false
+
+};
+
+
+function bindButton(id,key){
+
+    const b = document.getElementById(id);
+
+    b.addEventListener("pointerdown",function(e){
+
+        e.preventDefault();
+
+        controls[key] = true;
+
+    });
+
+    b.addEventListener("pointerup",function(e){
+
+        e.preventDefault();
+
+        controls[key] = false;
+
+    });
+
+    b.addEventListener("pointercancel",function(){
+
+        controls[key] = false;
+
+    });
+
+    b.addEventListener("pointerleave",function(){
+
+        controls[key] = false;
+
+    });
+
+}
+
+
+bindButton("left","left");
+bindButton("right","right");
+bindButton("gas","gas");
+bindButton("brake","brake");
+
+
+/* PC */
+
+document.addEventListener("keydown",function(e){
+
+    const k = e.key.toLowerCase();
+
+    if(k==="arrowleft" || k==="a"){
+        controls.left=true;
+    }
+
+    if(k==="arrowright" || k==="d"){
+        controls.right=true;
+    }
+
+    if(k==="arrowup" || k==="w"){
+        controls.gas=true;
+    }
+
+    if(k==="arrowdown" || k==="s"){
+        controls.brake=true;
+    }
+
+    if(k==="r"){
+        restartLevel();
+    }
+
+});
+
+
+document.addEventListener("keyup",function(e){
+
+    const k = e.key.toLowerCase();
+
+    if(k==="arrowleft" || k==="a"){
+        controls.left=false;
+    }
+
+    if(k==="arrowright" || k==="d"){
+        controls.right=false;
+    }
+
+    if(k==="arrowup" || k==="w"){
+        controls.gas=false;
+    }
+
+    if(k==="arrowdown" || k==="s"){
+        controls.brake=false;
+    }
+
+});
+
+
+/* =====================================================
+   PLAYER
+===================================================== */
+
+const player = {
+
+    x:150,
+
+    y:0,
+
+    speed:0,
+
+    vertical:0,
+
+    rotation:0
+
+};
+
+
+/* =====================================================
+   BOT
+===================================================== */
+
+const bot = {
+
+    x:70,
+
+    y:0,
+
+    speed:3,
+
+    rotation:0
+
+};
+
+
+/* =====================================================
+   OBJECTS
+===================================================== */
+
+let coins = [];
+
+let shops = [];
+
+let trees = [];
+
+
+/* =====================================================
+   TERRAIN
+===================================================== */
+
+function ground(x){
+
+    const l = level;
+
+    return H*.66
+
+        + Math.sin(x*l.wave1)*l.amp1
+
+        + Math.sin(x*l.wave2)*l.amp2
+
+        + Math.sin(x*l.wave3)*l.amp3;
+
+}
+
+
+/* =====================================================
+   GENERATE LEVEL
+===================================================== */
+
+function generateLevel(){
+
+    level = levels[currentLevel];
+
+    finishX = level.length;
+
+    coins = [];
+
+    shops = [];
+
+    trees = [];
+
+
+    /* COINS */
+
+    for(let x=450;x<finishX;x+=250){
+
+        coins.push({
+
+            x:x,
+
+            taken:false
+
+        });
+
+    }
+
+
+    /* SHOPS */
+
+    for(let x=850;x<finishX;x+=1100){
+
+        shops.push({
+
+            x:x,
+
+            used:false
+
+        });
+
+    }
+
+
+    /* TREES */
+
+    for(let x=300;x<finishX;x+=320){
+
+        trees.push({
+
+            x:x,
+
+            type:Math.floor(Math.random()*3)
+
+        });
+
+    }
+
+
+    document.getElementById("levelName").innerText =
+        "LEVEL "+(currentLevel+1)+" - "+level.name;
+
+}
+
+
+/* =====================================================
+   START
+===================================================== */
+
+function startGame(){
+
+    generateLevel();
+
+    restartLevel();
+
+    gameRunning = true;
+
+    document.getElementById("menu").style.display="none";
+
+}
+
+
+/* =====================================================
+   RESTART
+===================================================== */
+
+function restartLevel(){
+
+    if(!level){
+
+        level = levels[currentLevel];
+
+    }
+
+    player.x=150;
+
+    player.y=ground(150)-32;
+
+    player.speed=0;
+
+    player.vertical=0;
+
+    player.rotation=0;
+
+
+    bot.x=70;
+
+    bot.y=ground(70)-32;
+
+    bot.speed=level.speed;
+
+    bot.rotation=0;
+
+
+    camera=0;
+
+    fuel=100;
+
+    coinCount=0;
+
+    shopCount=0;
+
+    gameEnded=false;
+
+    gameRunning=true;
+
+
+    coins.forEach(c=>c.taken=false);
+
+    shops.forEach(s=>s.used=false);
+
+
+    document.getElementById("resultScreen").style.display="none";
+
+}
+
+
+/* =====================================================
+   PLAYER PHYSICS
+===================================================== */
+
+function updatePlayer(){
+
+    if(!gameRunning || gameEnded){
+
+        return;
+
+    }
+
+
+    /* gravity */
+
+    player.vertical += .42;
+
+    player.y += player.vertical;
+
+
+    const g = ground(player.x);
+
+
+    /* ground */
+
+    if(player.y >= g-32){
+
+        player.y = g-32;
+
+        player.vertical = 0;
+
+
+        /* acceleration */
+
+        if(controls.gas && fuel>0){
+
+            player.speed += .16;
+
+            fuel -= .035;
+
+        }
+
+
+        /* brake */
+
+        if(controls.brake){
+
+            player.speed *= .93;
+
+        }
+
+
+        /* air/tilt control */
+
+        if(controls.left){
+
+            player.rotation -= .035;
+
+        }
+
+        if(controls.right){
+
+            player.rotation += .035;
+
+        }
+
+    }
+
+
+    /* friction */
+
+    player.speed *= .993;
+
+
+    if(player.speed<0){
+
+        player.speed=0;
+
+    }
+
+
+    if(player.speed>8){
+
+        player.speed=8;
+
+    }
+
+
+    player.x += player.speed;
+
+
+    /* terrain angle */
+
+    const slope = Math.atan2(
+
+        ground(player.x+8)-ground(player.x),
+
+        8
+
+    );
+
+
+    /* only softly follow terrain */
+
+    player.rotation +=
+        (slope-player.rotation)*.055;
+
+
+    /* if fuel empty */
+
+    if(fuel<=0){
+
+        fuel=0;
+
+        player.speed*=.98;
+
+    }
+
+}
+
+
+/* =====================================================
+   BOT
+===================================================== */
+
+function updateBot(){
+
+    if(!gameRunning || gameEnded){
+
+        return;
+
+    }
+
+
+    bot.x += bot.speed;
+
+
+    /* small speed variation */
+
+    bot.speed += Math.sin(bot.x*.01)*.004;
+
+
+    const slope = Math.atan2(
+
+        ground(bot.x+8)-ground(bot.x),
+
+        8
+
+    );
+
+
+    bot.rotation +=
+        (slope-bot.rotation)*.07;
+
+
+    bot.y = ground(bot.x)-32;
+
+}
+
+
+/* =====================================================
+   COLLECT COINS
+===================================================== */
+
+function collectCoins(){
+
+    for(const c of coins){
+
+        if(c.taken){
+
+            continue;
+
+        }
+
+
+        if(Math.abs(player.x-c.x)<40){
+
+            c.taken=true;
+
+            coinCount++;
+
+        }
+
+    }
+
+}
+
+
+/* =====================================================
+   SHOPS
+===================================================== */
+
+function collectShops(){
+
+    for(const s of shops){
+
+        if(s.used){
+
+            continue;
+
+        }
+
+
+        if(Math.abs(player.x-s.x)<85){
+
+            s.used=true;
+
+            shopCount++;
+
+            fuel+=35;
+
+
+            if(fuel>100){
+
+                fuel=100;
+
+            }
+
+        }
+
+    }
+
+}
+
+
+/* =====================================================
+   GAME CHECK
+===================================================== */
+
+function checkGame(){
+
+    if(gameEnded){
+
+        return;
+
+    }
+
+
+    /* crash */
+
+    if(Math.abs(player.rotation)>1.7){
+
+        finishGame(
+
+            "💥 CRASH!",
+
+            "Your car flipped!"
+
+        );
+
+        return;
+
+    }
+
+
+    /* player finish */
+
+    if(player.x>=finishX){
+
+        finishGame(
+
+            "🏆 LEVEL COMPLETE!",
+
+            "You finished the race!"
+
+        );
+
+        return;
+
+    }
+
+
+    /* bot finish */
+
+    if(bot.x>=finishX){
+
+        finishGame(
+
+            "🤖 BOT WINS!",
+
+            "The BOT reached the finish first."
+
+        );
+
+        return;
+
+    }
+
+}
+
+
+/* =====================================================
+   FINISH GAME
+===================================================== */
+
+function finishGame(title,info){
+
+    if(gameEnded){
+
+        return;
+
+    }
+
+
+    gameEnded=true;
+
+    gameRunning=false;
+
+
+    document.getElementById("resultTitle").innerText=title;
+
+
+    document.getElementById("resultInfo").innerHTML=
+
+        info+
+
+        "<br><br>"+
+
+        "🪙 Coins: "+coinCount+
+
+        "<br>"+
+
+        "🏪 Shops: "+shopCount;
+
+
+    const next =
+        document.getElementById("nextLevel");
+
+
+    if(
+
+        title.includes("LEVEL COMPLETE") &&
+
+        currentLevel<levels.length-1
+
+    ){
+
+        next.style.display="block";
+
+    }else{
+
+        next.style.display="none";
+
+    }
+
+
+    document.getElementById("resultScreen").style.display="block";
+
+}
+
+
+/* =====================================================
+   BACKGROUND
+===================================================== */
+
+function drawBackground(){
+
+    ctx.fillStyle=level.sky;
+
+    ctx.fillRect(0,0,W,H);
+
+
+    /* SUN / MOON */
+
+    if(currentLevel===3){
+
+        ctx.fillStyle="#e8e8ff";
+
+    }else if(currentLevel===4){
+
+        ctx.fillStyle="#ff6038";
+
+    }else{
+
+        ctx.fillStyle="#ffe16b";
+
+    }
+
+
+    ctx.beginPath();
+
+    ctx.arc(W-75,75,34,0,Math.PI*2);
+
+    ctx.fill();
+
+
+    /* distant mountains */
+
+    ctx.fillStyle=level.mountain;
+
+    ctx.beginPath();
+
+    ctx.moveTo(0,H*.65);
+
+
+    for(let x=0;x<=W;x+=20){
+
+        const worldX=x+camera*.25;
+
+        const y=
+            H*.50+
+            Math.sin(worldX*.003)*55+
+            Math.sin(worldX*.007)*25;
+
+        ctx.lineTo(x,y);
+
+    }
+
+
+    ctx.lineTo(W,H);
+
+    ctx.lineTo(0,H);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+
+    /* clouds in daytime */
+
+    if(currentLevel<3){
+
+        drawCloud(130,90);
+
+        drawCloud(390,140);
+
+        drawCloud(650,70);
+
+    }
+
+}
+
+
+/* =====================================================
+   CLOUD
+===================================================== */
+
+function drawCloud(x,y){
+
+    ctx.fillStyle="rgba(255,255,255,.75)";
+
+    ctx.beginPath();
+
+    ctx.arc(x,y,22,0,Math.PI*2);
+
+    ctx.arc(x+25,y-8,28,0,Math.PI*2);
+
+    ctx.arc(x+55,y,22,0,Math.PI*2);
+
+    ctx.fill();
+
+}
+
+
+/* =====================================================
+   ROAD
+===================================================== */
+
+function drawRoad(){
+
+    /* thick dark border */
+
+    ctx.beginPath();
+
+
+    for(let x=0;x<=W;x+=6){
+
+        const y=ground(x+camera);
+
+
+        if(x===0){
+
+            ctx.moveTo(x,y);
+
+        }else{
+
+            ctx.lineTo(x,y);
+
+        }
+
+    }
+
+
+    ctx.lineWidth=38;
+
+    ctx.strokeStyle="#241d1a";
+
+    ctx.stroke();
+
+
+    /* road */
+
+    ctx.beginPath();
+
+
+    for(let x=0;x<=W;x+=6){
+
+        const y=ground(x+camera);
+
+
+        if(x===0){
+
+            ctx.moveTo(x,y);
+
+        }else{
+
+            ctx.lineTo(x,y);
+
+        }
+
+    }
+
+
+    ctx.lineWidth=30;
+
+    ctx.strokeStyle=level.road;
+
+    ctx.stroke();
+
+
+    /* center markings */
+
+    ctx.beginPath();
+
+
+    for(let x=0;x<=W;x+=8){
+
+        const y=ground(x+camera)-2;
+
+
+        if(x===0){
+
+            ctx.moveTo(x,y);
+
+        }else{
+
+            ctx.lineTo(x,y);
+
+        }
+
+    }
+
+
+    ctx.lineWidth=3;
+
+    ctx.strokeStyle="#f8df63";
+
+    ctx.setLineDash([18,15]);
+
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+
+}
+
+
+/* =====================================================
+   TREES
+===================================================== */
+
+function drawTrees(){
+
+    for(const t of trees){
+
+        const x=t.x-camera;
+
+
+        if(x<-80 || x>W+80){
+
+            continue;
+
+        }
+
+
+        const y=ground(t.x);
+
+
+        /* trunk */
+
+        ctx.fillStyle="#6b4226";
+
+        ctx.fillRect(
+
+            x-7,
+
+            y-80,
+
+            14,
+
+            55
+
+        );
+
+
+        /* tree */
+
+        ctx.fillStyle=
+            currentLevel===2
+            ? "#ffffff"
+            : currentLevel===4
+            ? "#e94a28"
+            : "#2d8b3c";
+
+
+        ctx.beginPath();
+
+        ctx.arc(x,y-90,30,0,Math.PI*2);
+
+        ctx.fill();
+
+
+        ctx.beginPath();
+
+        ctx.arc(x-22,y-72,23,0,
